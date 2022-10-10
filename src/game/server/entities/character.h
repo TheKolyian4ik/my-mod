@@ -249,6 +249,9 @@ public:
 	bool IsSuper() { return m_Core.m_Super; }
 
 	CSaveTee &GetRescueTeeRef() { return m_RescueTee; }
+
+	//my mod
+	int m_Shots;
 };
 
 enum

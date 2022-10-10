@@ -1200,6 +1200,7 @@ void CServer::SendMap(int ClientID)
 		Msg.AddRaw(&m_aCurrentMapSha256[MapType].data, sizeof(m_aCurrentMapSha256[MapType].data));
 		Msg.AddInt(m_aCurrentMapCrc[MapType]);
 		Msg.AddInt(m_aCurrentMapSize[MapType]);
+		Msg.AddString("", 0); // HTTPS map download URL
 		SendMsg(&Msg, MSGFLAG_VITAL, ClientID);
 	}
 	{
@@ -1334,7 +1335,8 @@ void CServer::UpdateClientRconCommands()
 
 	if(m_aClients[ClientID].m_State != CClient::STATE_EMPTY && m_aClients[ClientID].m_Authed)
 	{
-		int ConsoleAccessLevel = m_aClients[ClientID].m_Authed == AUTHED_ADMIN ? IConsole::ACCESS_LEVEL_ADMIN : m_aClients[ClientID].m_Authed == AUTHED_MOD ? IConsole::ACCESS_LEVEL_MOD : IConsole::ACCESS_LEVEL_HELPER;
+		int ConsoleAccessLevel = m_aClients[ClientID].m_Authed == AUTHED_ADMIN ? IConsole::ACCESS_LEVEL_ADMIN : m_aClients[ClientID].m_Authed == AUTHED_MOD ? IConsole::ACCESS_LEVEL_MOD :
+                                                                                                                                                                      IConsole::ACCESS_LEVEL_HELPER;
 		for(int i = 0; i < MAX_RCONCMD_SEND && m_aClients[ClientID].m_pRconCmdToSend; ++i)
 		{
 			SendRconCmdAdd(m_aClients[ClientID].m_pRconCmdToSend, ClientID);
@@ -1537,7 +1539,11 @@ void CServer::ProcessClientPacket(CNetChunk *pPacket)
 				str_format(aBuf, sizeof(aBuf), "player has entered the game. ClientID=%d addr=<{%s}> sixup=%d", ClientID, aAddrStr, IsSixup(ClientID));
 				Console()->Print(IConsole::OUTPUT_LEVEL_STANDARD, "server", aBuf);
 				m_aClients[ClientID].m_State = CClient::STATE_INGAME;
-				if(IsSixup(ClientID))
+				if(!IsSixup(ClientID))
+				{
+					SendServerInfo(m_NetServer.ClientAddr(ClientID), -1, SERVERINFO_EXTENDED, false);
+				}
+				else
 				{
 					CMsgPacker Msgp(4, true, true); //NETMSG_SERVERINFO //TODO: Import the shared protocol from 7 aswell
 					GetServerInfoSixup(&Msgp, -1, false);
@@ -1623,7 +1629,9 @@ void CServer::ProcessClientPacket(CNetChunk *pPacket)
 					Console()->Print(IConsole::OUTPUT_LEVEL_STANDARD, "server", aBuf);
 					m_RconClientID = ClientID;
 					m_RconAuthLevel = m_aClients[ClientID].m_Authed;
-					Console()->SetAccessLevel(m_aClients[ClientID].m_Authed == AUTHED_ADMIN ? IConsole::ACCESS_LEVEL_ADMIN : m_aClients[ClientID].m_Authed == AUTHED_MOD ? IConsole::ACCESS_LEVEL_MOD : m_aClients[ClientID].m_Authed == AUTHED_HELPER ? IConsole::ACCESS_LEVEL_HELPER : IConsole::ACCESS_LEVEL_USER);
+					Console()->SetAccessLevel(m_aClients[ClientID].m_Authed == AUTHED_ADMIN ? IConsole::ACCESS_LEVEL_ADMIN : m_aClients[ClientID].m_Authed == AUTHED_MOD ? IConsole::ACCESS_LEVEL_MOD :
+																	 m_aClients[ClientID].m_Authed == AUTHED_HELPER      ? IConsole::ACCESS_LEVEL_HELPER :
+                                                                                                                                                                                               IConsole::ACCESS_LEVEL_USER);
 					{
 						CRconClientLogger Logger(this, ClientID);
 						CLogScope Scope(&Logger);
@@ -1885,7 +1893,8 @@ void CServer::CacheServerInfo(CCache *pCache, int Type, bool SendClients)
 		}
 		else
 		{
-			str_format(aBuf, sizeof(aBuf), "%s [%d/%d]", Config()->m_SvName, ClientCount, m_NetServer.MaxClients());
+			const int MaxClients = maximum(ClientCount, m_NetServer.MaxClients() - Config()->m_SvReservedSlots);
+			str_format(aBuf, sizeof(aBuf), "%s [%d/%d]", Config()->m_SvName, ClientCount, MaxClients);
 			p.AddString(aBuf, 64);
 		}
 	}
@@ -2608,13 +2617,14 @@ int CServer::Run()
 		dbg_msg("server", "+-------------------------+");
 	}
 
+
 	//my mod
 	//char aConfigFileTmp[IO_MAX_PATH_LENGTH];
 	const char *pFilename = "foo.txt";
 	IOHANDLE File = m_pStorage->OpenFile(pFilename, IOFLAG_READ, IStorage::TYPE_ABSOLUTE);
 	//IStorage::FormatTmpPath(aConfigFileTmp, sizeof(aConfigFileTmp), "foo.txt")
 
-	if(!File) 
+	if(!File)
 	{
 		dbg_msg("my mod", "ERROR: opening %s failed", pFilename);
 	}
@@ -2638,7 +2648,7 @@ int CServer::Run()
 	pFilename = "bar.txt";
 	File = m_pStorage->OpenFile(pFilename, IOFLAG_WRITE, IStorage::TYPE_ABSOLUTE);
 
-	if(!File) 
+	if(!File)
 	{
 		dbg_msg("my mod", "ERROR: opening %s failed", pFilename);
 	}
@@ -2972,8 +2982,9 @@ void CServer::ConStatus(IConsole::IResult *pResult, void *pUser)
 			if(pThis->Config()->m_SvDnsbl)
 			{
 				const char *pDnsblStr = pThis->m_aClients[i].m_DnsblState == CClient::DNSBL_STATE_WHITELISTED ? "white" :
-																pThis->m_aClients[i].m_DnsblState == CClient::DNSBL_STATE_BLACKLISTED ? "black" :
-																									pThis->m_aClients[i].m_DnsblState == CClient::DNSBL_STATE_PENDING ? "pending" : "n/a";
+							pThis->m_aClients[i].m_DnsblState == CClient::DNSBL_STATE_BLACKLISTED ? "black" :
+							pThis->m_aClients[i].m_DnsblState == CClient::DNSBL_STATE_PENDING     ? "pending" :
+                                                                                                                                "n/a";
 
 				str_format(aDnsblStr, sizeof(aDnsblStr), " dnsbl=%s", pDnsblStr);
 			}
@@ -2982,9 +2993,10 @@ void CServer::ConStatus(IConsole::IResult *pResult, void *pUser)
 			aAuthStr[0] = '\0';
 			if(pThis->m_aClients[i].m_AuthKey >= 0)
 			{
-				const char *pAuthStr = pThis->m_aClients[i].m_Authed == AUTHED_ADMIN ? "(Admin)" :
-												       pThis->m_aClients[i].m_Authed == AUTHED_MOD ? "(Mod)" :
-																		     pThis->m_aClients[i].m_Authed == AUTHED_HELPER ? "(Helper)" : "";
+				const char *pAuthStr = pThis->m_aClients[i].m_Authed == AUTHED_ADMIN  ? "(Admin)" :
+						       pThis->m_aClients[i].m_Authed == AUTHED_MOD    ? "(Mod)" :
+						       pThis->m_aClients[i].m_Authed == AUTHED_HELPER ? "(Helper)" :
+                                                                                                        "";
 
 				str_format(aAuthStr, sizeof(aAuthStr), " key=%s %s", pThis->m_AuthManager.KeyIdent(pThis->m_aClients[i].m_AuthKey), pAuthStr);
 			}
@@ -3431,8 +3443,8 @@ void CServer::ConAddSqlServer(IConsole::IResult *pResult, void *pUserData)
 
 	auto pMysqlConn = CreateMysqlConnection(
 		pResult->GetString(1), pResult->GetString(2), pResult->GetString(3),
-		pResult->GetString(4), pResult->GetString(5), pResult->GetInteger(6),
-		SetUpDb);
+		pResult->GetString(4), pResult->GetString(5), g_Config.m_SvSqlBindaddr,
+		pResult->GetInteger(6), SetUpDb);
 
 	if(!pMysqlConn)
 	{

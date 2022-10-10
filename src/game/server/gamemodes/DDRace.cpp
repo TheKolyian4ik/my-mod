@@ -11,8 +11,8 @@
 #include <game/server/score.h>
 #include <game/version.h>
 
-#define GAME_TYPE_NAME "DDraceNetwork"
-#define TEST_TYPE_NAME "TestDDraceNetwork"
+#define GAME_TYPE_NAME "Mymod"
+#define TEST_TYPE_NAME "TestMymod"
 
 CGameControllerDDRace::CGameControllerDDRace(class CGameContext *pGameServer) :
 	IGameController(pGameServer), m_Teams(pGameServer), m_pInitResult(nullptr)
@@ -35,6 +35,9 @@ void CGameControllerDDRace::OnCharacterSpawn(CCharacter *pChr)
 	pChr->SetTeams(&m_Teams);
 	pChr->SetTeleports(&m_TeleOuts, &m_TeleCheckOuts);
 	m_Teams.OnCharacterSpawn(pChr->GetPlayer()->GetCID());
+
+	//my mod
+	GameServer()->SendChat(-1, CGameContext::CHAT_ALL, "Character spawned");
 }
 
 void CGameControllerDDRace::HandleCharacterTiles(CCharacter *pChr, int MapIndex)
@@ -173,6 +176,8 @@ void CGameControllerDDRace::Tick()
 		}
 		m_pInitResult = nullptr;
 	}
+
+	
 }
 
 void CGameControllerDDRace::DoTeamChange(class CPlayer *pPlayer, int Team, bool DoChatMsg)

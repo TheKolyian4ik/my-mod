@@ -42,6 +42,7 @@ CCharacter::CCharacter(CGameWorld *pWorld, CNetObj_PlayerInput LastInput) :
 	{
 		CurrentTimeCp = 0.0f;
 	}
+
 	m_Shots = 0;
 }
 
@@ -388,7 +389,8 @@ void CCharacter::FireWeapon()
 	DoWeaponSwitch();
 	vec2 Direction = normalize(vec2(m_LatestInput.m_TargetX, m_LatestInput.m_TargetY));
 
-	bool FullAuto = true;//my mod
+	//my mod
+	bool FullAuto = true;
 	if(m_Core.m_ActiveWeapon == WEAPON_GRENADE || m_Core.m_ActiveWeapon == WEAPON_SHOTGUN || m_Core.m_ActiveWeapon == WEAPON_LASER)
 		FullAuto = true;
 	if(m_Core.m_Jetpack && m_Core.m_ActiveWeapon == WEAPON_GUN)
@@ -483,7 +485,7 @@ void CCharacter::FireWeapon()
 
 			if(m_FreezeHammer)
 				pTarget->Freeze();
-			
+
 			Antibot()->OnHammerHit(m_pPlayer->GetCID(), pTarget->GetPlayer()->GetCID());
 
 			Hits++;
@@ -525,15 +527,13 @@ void CCharacter::FireWeapon()
 				SOUND_GRENADE_EXPLODE //SoundImpact
 			);
 
-			//my mod
-			
 
-			
 			if(!m_Core.m_Jetpack)
 				GameServer()->CreateSound(m_Pos, SOUND_GUN_FIRE, TeamMask());
 			else
 				GameServer()->CreateSound(m_Pos, SOUND_HOOK_LOOP, TeamMask());
 		}
+		m_Shots += 1;
 	}
 	break;
 
@@ -562,17 +562,14 @@ void CCharacter::FireWeapon()
 			GameWorld(),
 			WEAPON_GRENADE, //Type
 			m_pPlayer->GetCID(), //Owner
-			vec2(m_LatestInput.m_TargetX, m_LatestInput.m_TargetY) *  atof(Config()->m_TestConfig) + m_Pos,//ProjStartPos, //Pos
-			-Direction, //Dir
+			ProjStartPos, //Pos
+			Direction, //Dir
 			Lifetime, //Span
 			false, //Freeze
 			true, //Explosive
 			0, //Force
 			SOUND_GRENADE_EXPLODE //SoundImpact
 		); //SoundImpact
-
-	 
-		
 
 		GameServer()->CreateSound(m_Pos, SOUND_GRENADE_FIRE, TeamMask());
 	}
@@ -600,8 +597,7 @@ void CCharacter::FireWeapon()
 		m_Core.m_Ninja.m_CurrentMoveTime = g_pData->m_Weapons.m_Ninja.m_Movetime * Server()->TickSpeed() / 1000;
 		m_Core.m_Ninja.m_OldVelAmount = length(m_Core.m_Vel);
 
-		//GameServer()->CreateSound(m_Pos, SOUND_NINJA_FIRE, TeamMask());
-		GameServer()->CreateSound(m_Pos, SOUND_HIT, TeamMask());
+		GameServer()->CreateSound(m_Pos, SOUND_NINJA_FIRE, TeamMask());
 	}
 	break;
 	}
@@ -617,7 +613,6 @@ void CCharacter::FireWeapon()
 			GameServer()->TuningList()[m_TuneZone].Get(38 + m_Core.m_ActiveWeapon, &FireDelay);
 		m_ReloadTimer = FireDelay * Server()->TickSpeed() / 1000;
 	}
-	m_Shots++;
 }
 
 void CCharacter::HandleWeapons()
@@ -957,8 +952,7 @@ void CCharacter::Die(int Killer, int Weapon)
 	GameServer()->m_World.m_Core.m_apCharacters[m_pPlayer->GetCID()] = 0;
 	GameServer()->CreateDeath(m_Pos, m_pPlayer->GetCID(), TeamMask());
 	Teams()->OnCharacterDeath(GetPlayer()->GetCID(), Weapon);
-
-	GetPlayer()->m_Deaths += 1;
+	m_pPlayer->m_Deaths += 1;
 }
 
 bool CCharacter::TakeDamage(vec2 Force, int Dmg, int From, int Weapon)
@@ -1219,7 +1213,8 @@ void CCharacter::Snap(int SnappingClient)
 	if(m_Core.m_LiveFrozen)
 		pDDNetCharacter->m_Flags |= CHARACTERFLAG_MOVEMENTS_DISABLED;
 
-	pDDNetCharacter->m_FreezeEnd = m_Core.m_DeepFrozen ? -1 : m_FreezeTime == 0 ? 0 : Server()->Tick() + m_FreezeTime;
+	pDDNetCharacter->m_FreezeEnd = m_Core.m_DeepFrozen ? -1 : m_FreezeTime == 0 ? 0 :
+                                                                                      Server()->Tick() + m_FreezeTime;
 	pDDNetCharacter->m_Jumps = m_Core.m_Jumps;
 	pDDNetCharacter->m_TeleCheckpoint = m_TeleCheckpoint;
 	pDDNetCharacter->m_StrongWeakID = m_StrongWeakID;
@@ -2351,5 +2346,6 @@ int64_t CCharacter::TeamMask()
 
 void CCharacter::SwapClients(int Client1, int Client2)
 {
-	m_Core.SetHookedPlayer(m_Core.m_HookedPlayer == Client1 ? Client2 : m_Core.m_HookedPlayer == Client2 ? Client1 : m_Core.m_HookedPlayer);
+	m_Core.SetHookedPlayer(m_Core.m_HookedPlayer == Client1 ? Client2 : m_Core.m_HookedPlayer == Client2 ? Client1 :
+                                                                                                               m_Core.m_HookedPlayer);
 }
