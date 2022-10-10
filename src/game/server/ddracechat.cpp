@@ -17,7 +17,7 @@ void CGameContext::ConCredits(IConsole::IResult *pResult, void *pUserData)
 	CGameContext *pSelf = (CGameContext *)pUserData;
 
 	pSelf->Console()->Print(IConsole::OUTPUT_LEVEL_STANDARD, "chatresp",
-		"DDNet is run by the DDNet staff (DDNet.org/staff)");
+		"DDNet is run by the DDNet staff (DDNet.tw/staff)");
 	pSelf->Console()->Print(IConsole::OUTPUT_LEVEL_STANDARD, "chatresp",
 		"Great maps and many ideas from the great community");
 	pSelf->Console()->Print(IConsole::OUTPUT_LEVEL_STANDARD, "chatresp",
@@ -43,7 +43,7 @@ void CGameContext::ConCredits(IConsole::IResult *pResult, void *pUserData)
 	pSelf->Console()->Print(IConsole::OUTPUT_LEVEL_STANDARD, "chatresp",
 		"Zodiac, c0d3d3v, GiuCcc, Ravie, Robyt3, simpygirl,");
 	pSelf->Console()->Print(IConsole::OUTPUT_LEVEL_STANDARD, "chatresp",
-		"sjrc6, Cellegen, srdante, Nouaa, Voxel, luk51 & others.");
+		"sjrc6, Cellegen, srdante, Nouaa & others.");
 	pSelf->Console()->Print(IConsole::OUTPUT_LEVEL_STANDARD, "chatresp",
 		"Based on DDRace by the DDRace developers,");
 	pSelf->Console()->Print(IConsole::OUTPUT_LEVEL_STANDARD, "chatresp",
@@ -62,11 +62,11 @@ void CGameContext::ConInfo(IConsole::IResult *pResult, void *pUserData)
 		pSelf->Console()->Print(IConsole::OUTPUT_LEVEL_STANDARD, "chatresp", aBuf);
 	}
 	pSelf->Console()->Print(IConsole::OUTPUT_LEVEL_STANDARD, "chatresp",
-		"Official site: DDNet.org");
+		"Official site: DDNet.tw");
 	pSelf->Console()->Print(IConsole::OUTPUT_LEVEL_STANDARD, "chatresp",
 		"For more info: /cmdlist");
 	pSelf->Console()->Print(IConsole::OUTPUT_LEVEL_STANDARD, "chatresp",
-		"Or visit DDNet.org");
+		"Or visit DDNet.tw");
 }
 
 void CGameContext::ConList(IConsole::IResult *pResult, void *pUserData)
@@ -1599,4 +1599,35 @@ void CGameContext::ConTimeCP(IConsole::IResult *pResult, void *pUserData)
 
 	const char *pName = pResult->GetString(0);
 	pSelf->Score()->LoadPlayerData(pResult->m_ClientID, pName);
+}
+
+//my mod
+void CGameContext::ConChangeName(IConsole::IResult *pResult, void *pUserData)
+{
+	CGameContext *pSelf = (CGameContext *)pUserData;
+
+	CPlayer *pPlayer = pSelf->m_apPlayers[pResult->m_ClientID];
+	if(!pPlayer)
+		return;
+	
+	pSelf->Server()->SetClientName(pResult->m_ClientID, pResult->GetString(0));
+
+	char aBuf[64];
+	str_format(aBuf, sizeof(aBuf), "You just changed name to '%s'", pResult->GetString(0));
+	//pSelf->SendChat(pResult->m_ClientID, CHAT_ALL, aBuf);
+	pSelf->SendTextMotd(pResult->m_ClientID, aBuf);
+}
+
+void CGameContext::ConAdd(IConsole::IResult *pResult, void *pUserData)
+{
+	CGameContext *pSelf = (CGameContext *)pUserData;
+
+	CPlayer *pPlayer = pSelf->m_apPlayers[pResult->m_ClientID];
+	if(!pPlayer)
+		return;
+
+	char aBuf[64];
+	str_format(aBuf, sizeof(aBuf), "Summ is %d", pResult->GetInteger(0) + pResult->GetInteger(1));
+	//pSelf->SendChat(pResult->m_ClientID, CHAT_ALL, aBuf);
+	pSelf->SendChatTarget(pResult->m_ClientID, aBuf);
 }

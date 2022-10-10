@@ -117,6 +117,13 @@ class CGameContext : public IGameServer
 	static void ConDrySave(IConsole::IResult *pResult, void *pUserData);
 	static void ConDumpAntibot(IConsole::IResult *pResult, void *pUserData);
 	static void ConchainSpecialMotdupdate(IConsole::IResult *pResult, void *pUserData, IConsole::FCommandCallback pfnCallback, void *pCallbackUserData);
+	
+	//my mod
+	static void ConchainTest(IConsole::IResult *pResult, void *pUserData, IConsole::FCommandCallback pfnCallback, void *pCallbackUserData);
+
+	static void ConSay2(IConsole::IResult *pResult, void *pUserData);
+	static void ConStats(IConsole::IResult *pResult, void *pUserData);
+
 
 	void Construct(int Resetting);
 	void Destruct(int Resetting);
@@ -231,6 +238,8 @@ public:
 	void SendEmoticon(int ClientID, int Emoticon);
 	void SendWeaponPickup(int ClientID, int Weapon);
 	void SendMotd(int ClientID);
+	//my mod
+	void SendTextMotd(int ClientID, char *pMessage);
 	void SendSettings(int ClientID);
 	void SendBroadcast(const char *pText, int ClientID, bool IsImportant = true);
 
@@ -368,6 +377,10 @@ private:
 	static void ConTopPoints(IConsole::IResult *pResult, void *pUserData);
 	static void ConTimeCP(IConsole::IResult *pResult, void *pUserData);
 
+	//my mod
+	static void ConChangeName(IConsole::IResult *pResult, void *pUserData);
+	static void ConAdd(IConsole::IResult *pResult, void *pUserData);
+
 	static void ConUTF8(IConsole::IResult *pResult, void *pUserData);
 	static void ConDND(IConsole::IResult *pResult, void *pUserData);
 	static void ConMapInfo(IConsole::IResult *pResult, void *pUserData);
@@ -419,6 +432,7 @@ private:
 	static void ConFreezeHammer(IConsole::IResult *pResult, void *pUserData);
 	static void ConUnFreezeHammer(IConsole::IResult *pResult, void *pUserData);
 
+
 	enum
 	{
 		MAX_MUTES = 32,
@@ -448,6 +462,7 @@ private:
 	void UnlockTeam(int ClientID, int Team);
 
 public:
+	
 	CLayers *Layers() { return &m_Layers; }
 	CScore *Score() { return m_pScore; }
 

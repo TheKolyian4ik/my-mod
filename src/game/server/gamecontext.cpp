@@ -535,7 +535,14 @@ void CGameContext::SendWeaponPickup(int ClientID, int Weapon)
 void CGameContext::SendMotd(int ClientID)
 {
 	CNetMsg_Sv_Motd Msg;
-	Msg.m_pMessage = g_Config.m_SvMotd;
+	Msg.m_pMessage = "some custom motd"; // g_Config.m_SvMotd;
+	Server()->SendPackMsg(&Msg, MSGFLAG_VITAL, ClientID);
+}
+//my mod
+void CGameContext::SendTextMotd(int ClientID, char *pMessage)
+{
+	CNetMsg_Sv_Motd Msg;
+	Msg.m_pMessage = pMessage; // g_Config.m_SvMotd;
 	Server()->SendPackMsg(&Msg, MSGFLAG_VITAL, ClientID);
 }
 
@@ -1460,6 +1467,10 @@ void CGameContext::OnClientEnter(int ClientID)
 		Server()->GetClientAddr(ClientID, &Addr);
 		Mute(&Addr, g_Config.m_SvChatInitialDelay, Server()->ClientName(ClientID), "Initial chat delay", true);
 	}
+	char aBuf[64];
+	str_format(aBuf, sizeof(aBuf), "Client name is %s", Server()->ClientName(ClientID));
+	SendChat(-1, CHAT_ALL, aBuf);
+	
 }
 
 bool CGameContext::OnClientDataPersist(int ClientID, void *pData)
@@ -1868,8 +1879,57 @@ void CGameContext::OnMessage(int MsgID, CUnpacker *pUnpacker, int ClientID)
 				Team = CHAT_ALL;
 
 			if(pMsg->m_pMessage[0] == '/')
-			{
-				if(str_startswith_nocase(pMsg->m_pMessage + 1, "w "))
+			{	
+				/*
+				my mod
+					/stats player
+					       ^
+				*/
+				if (str_comp_nocase(pMsg->m_pMessage + 1, "comm") == 0) 
+				{
+
+					SendChat(-1, Team, "Comm executed");
+				}
+				else if(str_startswith_nocase(pMsg->m_pMessage + 1, "stats"))
+				{	
+					if(str_startswith_nocase(pMsg->m_pMessage + 1, "stats ")) //if player name is given
+					{
+						char aBuf[64];
+						bool plExist = false;
+						for(int i = 0; i < MAX_CLIENTS; i++) //check if player exists
+						{
+							// *debug*
+							//str_format(aBuf, sizeof(aBuf), "id: %i, ClName: %s, SearchName: %s", i, Server()->ClientName(i), pMsg->m_pMessage + 7);
+							//Console()->Print(IConsole::OUTPUT_LEVEL_STANDARD, "debugger", aBuf);
+
+							if(PlayerExists(i) && str_comp(Server()->ClientName(i), pMsg->m_pMessage + 7) == 0)
+							{
+								plExist = true;
+							}
+						}
+
+						if(plExist)
+						{
+							str_format(aBuf, sizeof(aBuf), "Stats of player '%s'.", pMsg->m_pMessage + 7);
+							SendChat(-1, Team, aBuf);
+						}
+						else
+						{
+							str_format(aBuf, sizeof(aBuf), "Player '%s' isn't found.", pMsg->m_pMessage + 7);
+							SendChat(-1, Team, aBuf);
+						}
+
+						
+					
+					}
+					else
+					{
+						SendChat(-1, Team, "Usage: /stats (playerName)");
+					}
+				}
+
+
+				else if(str_startswith_nocase(pMsg->m_pMessage + 1, "w "))
 				{
 					char aWhisperMsg[256];
 					str_copy(aWhisperMsg, pMsg->m_pMessage + 3, 256);
@@ -2854,6 +2914,7 @@ void CGameContext::ConSay(IConsole::IResult *pResult, void *pUserData)
 	pSelf->SendChat(-1, CGameContext::CHAT_ALL, pResult->GetString(0));
 }
 
+
 void CGameContext::ConSetTeam(IConsole::IResult *pResult, void *pUserData)
 {
 	CGameContext *pSelf = (CGameContext *)pUserData;
@@ -2890,6 +2951,7 @@ void CGameContext::ConSetTeamAll(IConsole::IResult *pResult, void *pUserData)
 
 void CGameContext::ConAddVote(IConsole::IResult *pResult, void *pUserData)
 {
+	
 	CGameContext *pSelf = (CGameContext *)pUserData;
 	const char *pDescription = pResult->GetString(0);
 	const char *pCommand = pResult->GetString(1);
@@ -3175,6 +3237,90 @@ void CGameContext::ConchainSpecialMotdupdate(IConsole::IResult *pResult, void *p
 	}
 }
 
+void CGameContext::ConSay2(IConsole::IResult *pResult, void *pUserData)
+{
+	CGameContext *pSelf = (CGameContext *)pUserData;
+
+	pSelf->SendChat(pResult->GetInteger(0), CGameContext::CHAT_ALL, pResult->GetString(1));
+	pSelf->Console()->Print(IConsole::OUTPUT_LEVEL_STANDARD, "SERV", "Done!", ColorRGBA(0.4, 0.5, 0.6));
+}
+
+void PrintStats(int ClientID, CGameContext *pSelf)
+{
+	char aBuf[64];
+	int shots = 0;
+	if(pSelf->m_apPlayers[ClientID]->GetCharacter())
+	{
+		shots = pSelf->m_apPlayers[ClientID]->GetCharacter()->m_Shots;
+		
+	}
+	str_format(aBuf, sizeof(aBuf), "Stats of player '%s':(deaths: %d, shots: %d)",
+		   pSelf->Server()->ClientName(ClientID),
+		   pSelf->m_apPlayers[ClientID]->m_Deaths,
+		   shots
+	);
+	pSelf->Console()->Print(IConsole::OUTPUT_LEVEL_STANDARD, "STATS", aBuf);
+}
+
+void CGameContext::ConStats(IConsole::IResult *pResult, void *pUserData)
+{
+	CGameContext *pSelf = (CGameContext *)pUserData;
+
+	if (pResult->NumArguments() == 0)
+	{
+		for(int i = 0; i<MAX_CLIENTS; i++)
+		{
+			
+			if(!pSelf->m_apPlayers[i])
+			{
+				continue;
+			}
+
+			PrintStats(i, pSelf);
+
+			/* char aBuf[64];
+			str_format(aBuf, sizeof(aBuf), "Stats of player '%s'", pSelf->Server()->ClientName(i));
+			pSelf->Console()->Print(IConsole::OUTPUT_LEVEL_STANDARD, "STATS", aBuf);
+			*/
+		}
+	}
+	else
+	{
+		int i = pResult->GetInteger(0);
+
+		if(!pSelf->m_apPlayers[i])
+		{
+			pSelf->Console()->Print(IConsole::OUTPUT_LEVEL_STANDARD, "STATS", "Client doesn't exist!");
+			return;
+		}
+
+		PrintStats(i, pSelf);
+		/* char aBuf[64];
+		str_format(aBuf, sizeof(aBuf), "Stats of player '%s'", pSelf->Server()->ClientName(i));
+		pSelf->Console()->Print(IConsole::OUTPUT_LEVEL_STANDARD, "STATS", aBuf);*/
+	}
+	
+	
+}
+
+
+
+void CGameContext::ConchainTest(IConsole::IResult *pResult, void *pUserData, IConsole::FCommandCallback pfnCallback, void *pCallbackUserData)
+{
+	pfnCallback(pResult, pCallbackUserData);
+	CGameContext *pSelf = (CGameContext *)pUserData;
+	if(pResult->NumArguments())
+	{
+		pSelf->Console()->Print(IConsole::OUTPUT_LEVEL_STANDARD, "Config", "You just chainged the value");
+	}
+	else
+	{
+		pSelf->Console()->Print(IConsole::OUTPUT_LEVEL_STANDARD, "Config", "You just viewed the value");
+	}
+	
+}
+
+
 void CGameContext::OnConsoleInit()
 {
 	m_pServer = Kernel()->RequestInterface<IServer>();
@@ -3212,7 +3358,13 @@ void CGameContext::OnConsoleInit()
 	Console()->Register("vote", "r['yes'|'no']", CFGFLAG_SERVER, ConVote, this, "Force a vote to yes/no");
 	Console()->Register("dump_antibot", "", CFGFLAG_SERVER, ConDumpAntibot, this, "Dumps the antibot status");
 
+	//my mod
+	Console()->Register("say2", "i[client] r[message]", CFGFLAG_SERVER, ConSay2, this, "Say in chat by the client");
+	Console()->Register("stats", "?i[client]", CFGFLAG_SERVER, ConStats, this, "Show players stats");
+
 	Console()->Chain("sv_motd", ConchainSpecialMotdupdate, this);
+
+	Console()->Chain("test_config", ConchainTest, this);
 
 #define CONSOLE_COMMAND(name, params, flags, callback, userdata, help) m_pConsole->Register(name, params, flags, callback, userdata, help);
 #include <game/ddracecommands.h>

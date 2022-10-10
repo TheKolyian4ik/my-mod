@@ -42,6 +42,7 @@ CCharacter::CCharacter(CGameWorld *pWorld, CNetObj_PlayerInput LastInput) :
 	{
 		CurrentTimeCp = 0.0f;
 	}
+	m_Shots = 0;
 }
 
 void CCharacter::Reset()
@@ -387,7 +388,7 @@ void CCharacter::FireWeapon()
 	DoWeaponSwitch();
 	vec2 Direction = normalize(vec2(m_LatestInput.m_TargetX, m_LatestInput.m_TargetY));
 
-	bool FullAuto = false;
+	bool FullAuto = true;//my mod
 	if(m_Core.m_ActiveWeapon == WEAPON_GRENADE || m_Core.m_ActiveWeapon == WEAPON_SHOTGUN || m_Core.m_ActiveWeapon == WEAPON_LASER)
 		FullAuto = true;
 	if(m_Core.m_Jetpack && m_Core.m_ActiveWeapon == WEAPON_GUN)
@@ -482,7 +483,7 @@ void CCharacter::FireWeapon()
 
 			if(m_FreezeHammer)
 				pTarget->Freeze();
-
+			
 			Antibot()->OnHammerHit(m_pPlayer->GetCID(), pTarget->GetPlayer()->GetCID());
 
 			Hits++;
@@ -519,12 +520,19 @@ void CCharacter::FireWeapon()
 				Direction, //Dir
 				Lifetime, //Span
 				false, //Freeze
-				false, //Explosive
+				true, //Explosive
 				0, //Force
-				-1 //SoundImpact
+				SOUND_GRENADE_EXPLODE //SoundImpact
 			);
 
-			GameServer()->CreateSound(m_Pos, SOUND_GUN_FIRE, TeamMask());
+			//my mod
+			
+
+			
+			if(!m_Core.m_Jetpack)
+				GameServer()->CreateSound(m_Pos, SOUND_GUN_FIRE, TeamMask());
+			else
+				GameServer()->CreateSound(m_Pos, SOUND_HOOK_LOOP, TeamMask());
 		}
 	}
 	break;
@@ -554,14 +562,17 @@ void CCharacter::FireWeapon()
 			GameWorld(),
 			WEAPON_GRENADE, //Type
 			m_pPlayer->GetCID(), //Owner
-			ProjStartPos, //Pos
-			Direction, //Dir
+			vec2(m_LatestInput.m_TargetX, m_LatestInput.m_TargetY) *  atof(Config()->m_TestConfig) + m_Pos,//ProjStartPos, //Pos
+			-Direction, //Dir
 			Lifetime, //Span
 			false, //Freeze
 			true, //Explosive
 			0, //Force
 			SOUND_GRENADE_EXPLODE //SoundImpact
 		); //SoundImpact
+
+	 
+		
 
 		GameServer()->CreateSound(m_Pos, SOUND_GRENADE_FIRE, TeamMask());
 	}
@@ -589,7 +600,8 @@ void CCharacter::FireWeapon()
 		m_Core.m_Ninja.m_CurrentMoveTime = g_pData->m_Weapons.m_Ninja.m_Movetime * Server()->TickSpeed() / 1000;
 		m_Core.m_Ninja.m_OldVelAmount = length(m_Core.m_Vel);
 
-		GameServer()->CreateSound(m_Pos, SOUND_NINJA_FIRE, TeamMask());
+		//GameServer()->CreateSound(m_Pos, SOUND_NINJA_FIRE, TeamMask());
+		GameServer()->CreateSound(m_Pos, SOUND_HIT, TeamMask());
 	}
 	break;
 	}
@@ -605,6 +617,7 @@ void CCharacter::FireWeapon()
 			GameServer()->TuningList()[m_TuneZone].Get(38 + m_Core.m_ActiveWeapon, &FireDelay);
 		m_ReloadTimer = FireDelay * Server()->TickSpeed() / 1000;
 	}
+	m_Shots++;
 }
 
 void CCharacter::HandleWeapons()
@@ -944,6 +957,8 @@ void CCharacter::Die(int Killer, int Weapon)
 	GameServer()->m_World.m_Core.m_apCharacters[m_pPlayer->GetCID()] = 0;
 	GameServer()->CreateDeath(m_Pos, m_pPlayer->GetCID(), TeamMask());
 	Teams()->OnCharacterDeath(GetPlayer()->GetCID(), Weapon);
+
+	GetPlayer()->m_Deaths += 1;
 }
 
 bool CCharacter::TakeDamage(vec2 Force, int Dmg, int From, int Weapon)

@@ -64,5 +64,8 @@ CHAT_COMMAND("tp", "?r[player name]", CFGFLAG_CHAT | CFGFLAG_SERVER, ConTele, th
 CHAT_COMMAND("teleport", "?r[player name]", CFGFLAG_CHAT | CFGFLAG_SERVER, ConTele, this, "Teleport yourself to player or to where you are spectating if no player name is given")
 
 CHAT_COMMAND("kill", "", CFGFLAG_CHAT | CFGFLAG_SERVER, ConProtectedKill, this, "Kill yourself when kill-protected during a long game (use f1, kill for regular kill)")
+CHAT_COMMAND("changename", "r[new name]", CFGFLAG_CHAT | CFGFLAG_SERVER, ConChangeName, this, "Changes your name at this server")
+CHAT_COMMAND("add", "ii", CFGFLAG_CHAT | CFGFLAG_SERVER, ConAdd, this, "Adds 2 nums")
+
 
 #undef CHAT_COMMAND
