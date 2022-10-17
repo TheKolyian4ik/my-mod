@@ -218,6 +218,17 @@ public:
 
 	//my mod
 	int m_Deaths;
+
+	struct CAccountData
+	{
+		CAccountData() {
+			m_Xp = 0;
+			m_Level = 0;
+		}
+		int m_Xp;
+		int m_Level;
+	};
+	CAccountData m_AccountData;
 };
 
 #endif

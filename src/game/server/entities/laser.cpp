@@ -6,6 +6,7 @@
 #include <engine/shared/config.h>
 
 #include <game/generated/protocol.h>
+#include <game/generated/server_data.h>
 #include <game/mapitems.h>
 
 #include <game/server/gamecontext.h>
@@ -89,12 +90,21 @@ bool CLaser::HitCharacter(vec2 From, vec2 To)
 		}
 		else
 		{
-			pHit->Core()->m_Vel = ClampVel(pHit->m_MoveRestrictions, pHit->Core()->m_Vel);
+			//my mod
+			pHit->TakeDamage(ClampVel(pHit->m_MoveRestrictions, pHit->Core()->m_Vel), 3, m_Owner, WEAPON_SHOTGUN);
+			
+			//pHit->Core()->m_Vel = ClampVel(pHit->m_MoveRestrictions, pHit->Core()->m_Vel);
 		}
 	}
 	else if(m_Type == WEAPON_LASER)
 	{
-		pHit->UnFreeze();
+		if (g_Config.m_SvLaserDamage) {
+			pHit->TakeDamage(vec2(0,0), g_pData->m_Weapons.m_Laser.m_pBase->m_Damage, m_Owner, WEAPON_LASER);
+		}
+		else
+		{
+			pHit->UnFreeze();
+		}
 	}
 	return true;
 }

@@ -39,5 +39,8 @@ public:
 	std::map<int, std::vector<vec2>> m_TeleCheckOuts;
 
 	std::shared_ptr<CScoreInitResult> m_pInitResult;
+
+	//my mod
+	int OnCharacterDeath(class CCharacter *pVictim, class CPlayer *pKiller, int Weapon) override;
 };
 #endif // GAME_SERVER_GAMEMODES_DDRACE_H

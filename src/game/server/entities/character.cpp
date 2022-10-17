@@ -479,8 +479,9 @@ void CCharacter::FireWeapon()
 			vec2 Temp = pTarget->m_Core.m_Vel + normalize(Dir + vec2(0.f, -1.1f)) * 10.0f;
 			Temp = ClampVel(pTarget->m_MoveRestrictions, Temp);
 			Temp -= pTarget->m_Core.m_Vel;
-			pTarget->TakeDamage((vec2(0.f, -1.0f) + Temp) * Strength, g_pData->m_Weapons.m_Hammer.m_pBase->m_Damage,
+			pTarget->TakeDamage((vec2(0.f, -1.0f) + Temp) * Strength, 2,
 				m_pPlayer->GetCID(), m_Core.m_ActiveWeapon);
+			// g_pData->m_Weapons.m_Hammer.m_pBase->m_Damage,
 			pTarget->UnFreeze();
 
 			if(m_FreezeHammer)
@@ -546,6 +547,7 @@ void CCharacter::FireWeapon()
 			LaserReach = GameServer()->TuningList()[m_TuneZone].m_LaserReach;
 
 		new CLaser(&GameServer()->m_World, m_Pos, Direction, LaserReach, m_pPlayer->GetCID(), WEAPON_SHOTGUN);
+		
 		GameServer()->CreateSound(m_Pos, SOUND_SHOTGUN_FIRE, TeamMask());
 	}
 	break;
@@ -570,6 +572,7 @@ void CCharacter::FireWeapon()
 			0, //Force
 			SOUND_GRENADE_EXPLODE //SoundImpact
 		); //SoundImpact
+
 
 		GameServer()->CreateSound(m_Pos, SOUND_GRENADE_FIRE, TeamMask());
 	}
@@ -959,12 +962,24 @@ bool CCharacter::TakeDamage(vec2 Force, int Dmg, int From, int Weapon)
 {
 	if(Dmg)
 	{
+
 		m_EmoteType = EMOTE_PAIN;
 		m_EmoteStop = Server()->Tick() + 500 * Server()->TickSpeed() / 1000;
+		GameServer()->CreateSound(m_Pos, SOUND_HIT, TeamMask());
+
+		m_Health -= Dmg;
+		char abuf[16];
+		str_format(abuf, sizeof(abuf), "Dmg is %d", Dmg);
+		GameServer()->SendChat(-1, CGameContext::CHAT_ALL, abuf);
+		if(m_Health <= 0) 
+		{
+			Die(From, Weapon);
+		}
 	}
 
 	vec2 Temp = m_Core.m_Vel + Force;
 	m_Core.m_Vel = ClampVel(m_MoveRestrictions, Temp);
+	
 
 	return true;
 }

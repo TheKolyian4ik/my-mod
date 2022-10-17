@@ -18,6 +18,7 @@ CGameControllerDDRace::CGameControllerDDRace(class CGameContext *pGameServer) :
 	IGameController(pGameServer), m_Teams(pGameServer), m_pInitResult(nullptr)
 {
 	m_pGameType = g_Config.m_SvTestingCommands ? TEST_TYPE_NAME : GAME_TYPE_NAME;
+	
 
 	InitTeleporter();
 }
@@ -35,9 +36,11 @@ void CGameControllerDDRace::OnCharacterSpawn(CCharacter *pChr)
 	pChr->SetTeams(&m_Teams);
 	pChr->SetTeleports(&m_TeleOuts, &m_TeleCheckOuts);
 	m_Teams.OnCharacterSpawn(pChr->GetPlayer()->GetCID());
-
+	
 	//my mod
-	GameServer()->SendChat(-1, CGameContext::CHAT_ALL, "Character spawned");
+	//pChr->GiveWeapon(WEAPON_HAMMER, true);
+	
+	//GameServer()->SendChat(-1, CGameContext::CHAT_ALL, "Character spawned");
 }
 
 void CGameControllerDDRace::HandleCharacterTiles(CCharacter *pChr, int MapIndex)
@@ -241,4 +244,31 @@ void CGameControllerDDRace::InitTeleporter()
 int CGameControllerDDRace::GetPlayerTeam(int ClientID) const
 {
 	return m_Teams.m_Core.Team(ClientID);
+}
+
+int CGameControllerDDRace::OnCharacterDeath(class CCharacter *pVictim, class CPlayer *pKiller, int Weapon) 
+{
+	IGameController::OnCharacterDeath(pVictim, pKiller, Weapon);
+	
+	char aBuf[128];
+	if(pKiller && pVictim)
+	{
+		str_format(aBuf, sizeof(aBuf), "'%s' killed '%s'",
+			Server()->ClientName(pKiller->GetCID()),
+			Server()->ClientName(pVictim->GetPlayer()->GetCID()));
+		GameServer()->SendChat(-1, CGameContext::CHAT_ALL, aBuf);
+	}
+
+	if (pKiller && pKiller != pVictim->GetPlayer()) {
+		pKiller->m_AccountData.m_Xp += 1;
+		pKiller->m_Score = pKiller->m_AccountData.m_Xp;
+		if (pKiller->m_AccountData.m_Xp % 3 == 0)
+		{
+			pKiller->m_AccountData.m_Level++;
+			
+			str_format(aBuf, sizeof(aBuf), "You are now level %d!", pKiller->m_AccountData.m_Level);
+			GameServer()->SendChatTarget(pKiller->GetCID(), aBuf);
+		}
+	}
+	return 0;
 }

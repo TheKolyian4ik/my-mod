@@ -105,6 +105,7 @@ class Weapon_Hammer(Struct):
 	def __init__(self):
 		Struct.__init__(self, "CDataWeaponspecHammer")
 		self.base = Pointer(WeaponSpec, WeaponSpec())
+		self.damage = int(2);
 
 class Weapon_Gun(Struct):
 	def __init__(self):
@@ -147,6 +148,7 @@ class Weapon_Ninja(Struct):
 		self.duration = Int(15000)
 		self.movetime = Int(200)
 		self.velocity = Int(50)
+		self.damage = Int(2)
 
 class Weapons(Struct):
 	def __init__(self):
